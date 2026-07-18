@@ -13,10 +13,17 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@google-cloud/translate": "^9.4.2",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "mysql2": "^3.23.0"
+    "fs": "^0.0.1-security",
+    "multer": "^2.2.0",
+    "mysql2": "^3.23.0",
+    "path": "^0.12.7",
+    "pdf-parse": "^2.4.5",
+    "pdfkit": "^0.19.1",
+    "router": "^2.2.0"
   }
 }

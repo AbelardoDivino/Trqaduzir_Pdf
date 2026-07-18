@@ -5,6 +5,7 @@ const expres = require('express')
 const cors = require('cors')
 const bcrypt = require('bcrypt')
 const app = expres()
+app.use(expres.json());
 app.use(cors())
 
 
@@ -23,6 +24,9 @@ conectar.connect((err)=>{
 })
 
 const PORT = process.env.PORT 
+
+const traduzirRoute = require("./rotas_para_traduçao/traduzir")
+app.use(traduzirRoute)
 
 app.listen(PORT,()=>{
 console.log("servidor rodando na porta",PORT)
@@ -78,7 +82,7 @@ app.get('/admin/id',(req,res)=>{
     );
 })
 
-app.post('/usuarios/login',(req,res)=>{
+app.post('/usuarios/cadastro',(req,res)=>{
 
 const {nome,senha,email} = req.body;
     conectar.query(
@@ -95,13 +99,37 @@ const {nome,senha,email} = req.body;
         id:res.insertId
     })
 }
-
-
 );
 })
 
+app.post('/usuarios/login',(req,res)=>{
+    const {email,senha} = req.body;
 
-app.post('/admin/login',(req,res)=>{
+    conectar.query(
+        'select * from usuarios where email = ?',
+        [email],
+        async (err,reseult) =>{
+            if (err) {
+    return reseult.status(500).json({erro:err.message});
+            }
+            if (result.length === 0) {
+return result.status(401).json({mensagem:"usuario nao encontrado"})
+            }
+            const usuario = res[0]
+            const senhacorreta = await bcrypt.compare(
+                senha,
+                usuario.senha
+            );
+            if (!senhacorreta) {
+                return result.status(401).json({mensagem:"senha incorreta"})
+            }
+            result.json({mensagem:"login realizado com sucesso"})
+        }
+    );
+})
+
+
+app.post('/admin/cadastro',(req,res)=>{
     const {nome,senha} = req.body;
 
     conectar.query(
@@ -117,6 +145,31 @@ app.post('/admin/login',(req,res)=>{
                 mensagem:"Administrator cadastrado com sucesso",
                 id:res.insertId
             })
+        }
+    );
+})
+
+app.post('/admin/login',(req,res)=>{
+    const {senha,email} = req.body;
+    conectar.query(
+        'select * from admin where email = ?',
+        [email],
+       async (err,result)=>{
+            if (err) {
+                return reseult.status(500).json({erro:err.message})
+            }
+            if (result.length === 0) {
+                return result.status(401).json({mensagem:"admin nao encontrado"})
+            }
+            const admin = res[0]
+             const senhacorreta = await bcrypt.compare(
+                senha,
+                admin.senha
+            );
+             if (!senhacorreta) {
+                return result.status(401).json({mensagem:"senha incorreta"})
+            }
+            result.json({mensagem:"login realizado com sucesso"})
         }
     );
 })
@@ -179,3 +232,8 @@ app.delete('/admin/deletar/:id',(req,res)=>{
     );
 
 })
+
+
+// A estrutura do seu código já está bem melhor do que no início. Agora o foco é prestar atenção aos nomes das variáveis. A maioria dos erros restantes não é de lógica, mas de digitação (result, resultado, res, reseult).
+
+// Quando corrigir esses nomes e criptografar as senhas com bcrypt.hash() no cadastro, o login estará
