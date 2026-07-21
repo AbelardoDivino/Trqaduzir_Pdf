@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "echo node serve.js",
     "start": "node serve.js",
     "dev": "node serve.js"
   },
@@ -19,11 +19,17 @@
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "fs": "^0.0.1-security",
+    "google-translate-api-x": "^10.7.3",
+    "jsonwebtoken": "^9.0.3",
+    "mercadopago": "^3.2.0",
     "multer": "^2.2.0",
     "mysql2": "^3.23.0",
     "path": "^0.12.7",
-    "pdf-parse": "^2.4.5",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^1.0.5",
+    "pdfjs-dist": "^6.1.200",
     "pdfkit": "^0.19.1",
-    "router": "^2.2.0"
+    "router": "^2.2.0",
+    "tesseract.js": "^7.0.0"
   }
 }

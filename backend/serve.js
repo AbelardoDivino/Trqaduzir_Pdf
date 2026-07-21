@@ -1,11 +1,12 @@
 // validar dados de login
+// arrumar api do mercado pago 
 require('dotenv').config()
 const mysql = require('mysql2')
-const expres = require('express')
+const express = require('express')
 const cors = require('cors')
 const bcrypt = require('bcrypt')
-const app = expres()
-app.use(expres.json());
+const app = express()
+app.use(express.json());
 app.use(cors())
 
 
@@ -44,7 +45,7 @@ conectar.query(
 );
 })
 
-app.get('/usuarios/id',(req,res)=>{
+app.get('/usuarios/:id',(req,res)=>{
 conectar.query(
 'select * from usuarios where id = ?',
 [id],
@@ -69,7 +70,8 @@ app.get('/admin',(req,res)=>{
     );
 })
 
-app.get('/admin/id',(req,res)=>{
+app.get('/admin/:id',(req,res)=>{
+    const {id} = req.params
     conectar.query(
         'select * from admin where id = ?',
         [id],
@@ -82,12 +84,16 @@ app.get('/admin/id',(req,res)=>{
     );
 })
 
-app.post('/usuarios/cadastro',(req,res)=>{
+app.post('/usuarios/cadastro', async (req,res)=>{
 
 const {nome,senha,email} = req.body;
+
+try{
+    // criptografar senha  antes de entrar no banco
+    const senhaHash = await bcrypt.hash(senha,10)
     conectar.query(
 'insert into usuarios (nome,senha,email) values (?,?,?)',
-[nome,senha,email],
+[nome,senhaHash,email],
 (err,res)=>{
     if (err) {
         return res.status(500).json({
@@ -98,8 +104,13 @@ const {nome,senha,email} = req.body;
         mensagem:"cadastro realizado com sucesso",
         id:res.insertId
     })
-}
+  }
 );
+} catch (err){
+    res.status(500).json({
+        erro:err.message
+    })
+}
 })
 
 app.post('/usuarios/login',(req,res)=>{
@@ -108,33 +119,37 @@ app.post('/usuarios/login',(req,res)=>{
     conectar.query(
         'select * from usuarios where email = ?',
         [email],
-        async (err,reseult) =>{
+        async (err,result) =>{
             if (err) {
-    return reseult.status(500).json({erro:err.message});
+    return res.status(500).json({erro:err.message
+});
             }
             if (result.length === 0) {
-return result.status(401).json({mensagem:"usuario nao encontrado"})
+return res.status(401).json({mensagem:"usuario nao encontrado"})
             }
-            const usuario = res[0]
+            const usuario = result[0]
             const senhacorreta = await bcrypt.compare(
                 senha,
                 usuario.senha
             );
             if (!senhacorreta) {
-                return result.status(401).json({mensagem:"senha incorreta"})
+                return res.status(401).json({mensagem:"senha incorreta"})
             }
-            result.json({mensagem:"login realizado com sucesso"})
+            res.json({mensagem:"login realizado com sucesso"})
         }
     );
 })
 
 
-app.post('/admin/cadastro',(req,res)=>{
+app.post('/admin/cadastro', async (req,res)=>{
     const {nome,senha} = req.body;
 
+try {
+     // criptografar a senha
+     const senhaHash = await bcrypt.hash(senha,10)
     conectar.query(
         'insert into admin(nome,senha) values(?,?)',
-        [nome,senha],
+        [nome,senhaHash],
         (err,res)=>{
             if (err) {
                 return res.status(500).json({
@@ -147,6 +162,11 @@ app.post('/admin/cadastro',(req,res)=>{
             })
         }
     );
+} catch (err){
+    res.status(500).json({
+        erro:err.message
+    })
+}
 })
 
 app.post('/admin/login',(req,res)=>{
@@ -156,20 +176,20 @@ app.post('/admin/login',(req,res)=>{
         [email],
        async (err,result)=>{
             if (err) {
-                return reseult.status(500).json({erro:err.message})
+                return res.status(500).json({erro:err.message})
             }
             if (result.length === 0) {
-                return result.status(401).json({mensagem:"admin nao encontrado"})
+                return res.status(401).json({mensagem:"admin nao encontrado"})
             }
-            const admin = res[0]
+            const admin = result[0]
              const senhacorreta = await bcrypt.compare(
                 senha,
                 admin.senha
             );
              if (!senhacorreta) {
-                return result.status(401).json({mensagem:"senha incorreta"})
+                return res.status(401).json({mensagem:"senha incorreta"})
             }
-            result.json({mensagem:"login realizado com sucesso"})
+            res.json({mensagem:"login realizado com sucesso"})
         }
     );
 })
@@ -178,7 +198,8 @@ app.put('/usuarios/:id',(req,res)=>{
     const {id} = req.params;
     const {nome,senha,email} = req.body;
     conectar.query(
-        'update usuarios set nome = ? , senha =  ?, email = ?, where id = ?',
+        'update usuarios set nome = ? , senha =  ?, email = ? where id = ?',
+        [nome,senha,email,id],
         (err,res)=>{
             if (err) {
                 return res.status(500).json({erro:err.message})
@@ -192,10 +213,12 @@ app.put('/admin/:id',(req,res)=>{
 const {id} = req.params;
 const {nome,senha} = req.body;
 conectar.query(
-    'update admin set nome = ?, senha =? , where id = ?',
+    'update admin set nome = ?, senha =? where id = ?',
+    [nome,senha,id],
     (err,res)=>{
         if (err) {
-            return res.status(500).json({erro:err.message})
+            return res.status(500).json({erro:err.message
+})
         }
         res.json({mensagem:"administrador cadastrado"})
     }
@@ -207,10 +230,10 @@ conectar.query(
 app.delete('/usuarios/deletar/:id',(req,res)=>{
     const  {id} = req.params;
     conectar.query(
-        'delete * from usuarios where id = ?',
+        'delete  from usuarios where id = ?',
         (err,res)=>{
             if (err) {
-                return res.status(500).json({erro:err.mensage})
+                return res.status(500).json({erro:err.message})
             }
             res.json({mensagem:"usuario deletado"})
         }
@@ -222,7 +245,7 @@ app.delete('/admin/deletar/:id',(req,res)=>{
 
     const {id} = req.params;
     conectar.query(
-        'delete * from admin where id = ?',
+        'delete  from admin where id = ?',
         (err,res)=>{
             if (err) {
                 return res.status(500).json({erro:err.message})
