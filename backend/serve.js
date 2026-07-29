@@ -5,9 +5,11 @@ const mysql = require('mysql2')
 const express = require('express')
 const cors = require('cors')
 const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
 const app = express()
 app.use(express.json());
 app.use(cors())
+const JWT_SECRET = process.env.JWT_SECRET //add chave secreta
 
 
 const conectar = mysql.createConnection({
@@ -113,6 +115,22 @@ try{
 }
 })
 
+function vereficarteoken(req,res,next){
+    const autheader = req.headers['authorization']
+    if (!autheader) {
+        return res.status(401).json({erro:"Token não fornecido"})
+    }
+    const token = autheader.split(' ')[1]
+    try{
+        const decoded = jwt.verify(token,JWT_SECRET)
+        req.usuario = decoded
+        next()
+    }
+    catch{
+        return res.status(401).json({erro:"token invalido ou expirado"})
+    }
+}
+
 app.post('/usuarios/login',(req,res)=>{
     const {email,senha} = req.body;
 
@@ -135,7 +153,12 @@ return res.status(401).json({mensagem:"usuario nao encontrado"})
             if (!senhacorreta) {
                 return res.status(401).json({mensagem:"senha incorreta"})
             }
-            res.json({mensagem:"login realizado com sucesso"})
+            const token = jwt.sign(
+              res.json({ token, usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email } }),
+                JWT_SECRET,
+                {expiresIn:'30m'}
+            )
+            res.json({ token, usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email } })
         }
     );
 })
@@ -189,7 +212,13 @@ app.post('/admin/login',(req,res)=>{
              if (!senhacorreta) {
                 return res.status(401).json({mensagem:"senha incorreta"})
             }
-            res.json({mensagem:"login realizado com sucesso"})
+            const token = jwt.sign(
+                {id:admin.id,nome:admin.nome,email:admin.email,tipo:"admin"},
+                JWT_SECRET,
+                {expiresIn:"30m"}
+            )
+            res.json({ token, usuario: { id: admin.id, nome: admin.nome, email: admin.email, tipo: 'admin' } })
+
         }
     );
 })
