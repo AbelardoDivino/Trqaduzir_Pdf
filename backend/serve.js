@@ -29,64 +29,65 @@ conectar.connect((err)=>{
 const PORT = process.env.PORT 
 
 const traduzirRoute = require("./rotas_para_traduçao/traduzir")
-app.use(traduzirRoute)
+app.use(vereficarteoken,traduzirRoute)
 
 app.listen(PORT,()=>{
 console.log("servidor rodando na porta",PORT)
 })
 
-app.get('/usuarios',(req,res)=>{
+app.get('/usuarios',vereficarteoken,(req,res)=>{
 conectar.query(
  'select * from usuarios',
-  (err,res)=>{
+  (err,result)=>{
     if (err) {
         return res.status(500).json(err)
     }
-    res.json(res)
+    res.json(result)
   }
 );
 })
 
-app.get('/usuarios/:id',(req,res)=>{
+app.get('/usuarios/:id',vereficarteoken,(req,res)=>{
+    const {id} = req.params;
 conectar.query(
 'select * from usuarios where id = ?',
 [id],
-(err,res)=>{
+(err,result)=>{
     if (err) {
         return res.status(500).json(err)
     }
-    res.json(res)
+    res.json(result)
 }
 );
 })
 
-app.get('/admin',(req,res)=>{
+app.get('/admin',vereficarteoken,(req,res)=>{
     conectar.query(
         'select * from admin',
-        (err,res)=>{
+        (err,result)=>{
             if (err) {
                 return res.status(500).json(err)
             }
-            res.json(res)
+            res.json(result)
         }
     );
 })
 
-app.get('/admin/:id',(req,res)=>{
+app.get('/admin/:id',vereficarteoken,(req,res)=>{
     const {id} = req.params
     conectar.query(
         'select * from admin where id = ?',
         [id],
-        (err,res)=>{
+        (err,result)=>{
             if (err) {
                 return res.status(500).json(err)
             }
-            res.json(res)
+            res.json(result)
         }
     );
 })
 
-app.post('/usuarios/cadastro', async (req,res)=>{
+app.post('/usuarios/cadastro',async (req,res)=>{
 
 const {nome,senha,email} = req.body;
 
@@ -96,7 +97,7 @@ try{
     conectar.query(
 'insert into usuarios (nome,senha,email) values (?,?,?)',
 [nome,senhaHash,email],
-(err,res)=>{
+(err,result)=>{
     if (err) {
         return res.status(500).json({
             erro:err.message
@@ -104,7 +105,7 @@ try{
     }
     res.status(201).json({
         mensagem:"cadastro realizado com sucesso",
-        id:res.insertId
+        id:result.insertId
     })
   }
 );
@@ -154,17 +155,24 @@ return res.status(401).json({mensagem:"usuario nao encontrado"})
                 return res.status(401).json({mensagem:"senha incorreta"})
             }
             const token = jwt.sign(
-              res.json({ token, usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email } }),
-                JWT_SECRET,
-                {expiresIn:'30m'}
-            )
+           {
+            id:usuario.id,
+            nome:usuario.nome,
+            email:usuario.email,
+            tipo:"usuario"
+           },
+           JWT_SECRET,
+           {
+            expiresIn:"30m"
+           }
+            );
             res.json({ token, usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email } })
         }
     );
 })
 
 
-app.post('/admin/cadastro', async (req,res)=>{
+app.post('/admin/cadastro',async (req,res)=>{
     const {nome,senha} = req.body;
 
 try {
@@ -173,7 +181,7 @@ try {
     conectar.query(
         'insert into admin(nome,senha) values(?,?)',
         [nome,senhaHash],
-        (err,res)=>{
+        (err,result)=>{
             if (err) {
                 return res.status(500).json({
                     erro:err.message
@@ -181,7 +189,7 @@ try {
             }
             res.status(201).json({
                 mensagem:"Administrator cadastrado com sucesso",
-                id:res.insertId
+                id:result.insertId
             })
         }
     );
@@ -223,28 +231,39 @@ app.post('/admin/login',(req,res)=>{
     );
 })
 
-app.put('/usuarios/:id',(req,res)=>{
+app.put('/usuarios/:id',vereficarteoken, async (req,res)=>{
     const {id} = req.params;
     const {nome,senha,email} = req.body;
-    conectar.query(
+
+    try{
+        const senhaHash = await bcrypt.hash(senha,10)
+
+            conectar.query(
         'update usuarios set nome = ? , senha =  ?, email = ? where id = ?',
-        [nome,senha,email,id],
-        (err,res)=>{
+        [nome,senhaHash,email,id],
+        (err,result)=>{
             if (err) {
                 return res.status(500).json({erro:err.message})
             }
             res.json({mensagem:"usuario atualizado"})
         }
     );
+    }catch(err){
+        return res.status(500).json({erro:err.message})
+    }
+
 })
 
-app.put('/admin/:id',(req,res)=>{
+app.put('/admin/:id',vereficarteoken, async(req,res)=>{
 const {id} = req.params;
 const {nome,senha} = req.body;
+
+try{
+    const senhaHash = await bcrypt.hash(senha,10)
 conectar.query(
     'update admin set nome = ?, senha =? where id = ?',
-    [nome,senha,id],
-    (err,res)=>{
+    [nome,senhaHash,id],
+    (err,result)=>{
         if (err) {
             return res.status(500).json({erro:err.message
 })
@@ -252,15 +271,20 @@ conectar.query(
         res.json({mensagem:"administrador cadastrado"})
     }
 );
+}catch(err){
+return res.status(500).json({erro:err.message})
+}
+
 
 
 })
 
-app.delete('/usuarios/deletar/:id',(req,res)=>{
+app.delete('/usuarios/deletar/:id',vereficarteoken,(req,res)=>{
     const  {id} = req.params;
     conectar.query(
         'delete  from usuarios where id = ?',
-        (err,res)=>{
+        [id],
+        (err,result)=>{
             if (err) {
                 return res.status(500).json({erro:err.message})
             }
@@ -270,12 +294,13 @@ app.delete('/usuarios/deletar/:id',(req,res)=>{
 })
 
 
-app.delete('/admin/deletar/:id',(req,res)=>{
+app.delete('/admin/deletar/:id',vereficarteoken,(req,res)=>{
 
     const {id} = req.params;
     conectar.query(
         'delete  from admin where id = ?',
-        (err,res)=>{
+        [id],
+        (err,result)=>{
             if (err) {
                 return res.status(500).json({erro:err.message})
             }
