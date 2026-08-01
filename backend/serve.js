@@ -9,6 +9,8 @@ const jwt = require('jsonwebtoken')
 const app = express()
 app.use(express.json());
 app.use(cors())
+const traduzirRoute = require("./rotas_para_traduçao/traduzir");
+app.use(traduzirRoute);
 const JWT_SECRET = process.env.JWT_SECRET //add chave secreta
 
 
@@ -27,9 +29,6 @@ conectar.connect((err)=>{
 })
 
 const PORT = process.env.PORT 
-
-const traduzirRoute = require("./rotas_para_traduçao/traduzir")
-app.use(vereficarteoken,traduzirRoute)
 
 app.listen(PORT,()=>{
 console.log("servidor rodando na porta",PORT)
@@ -61,7 +60,7 @@ conectar.query(
 );
 })
 
-app.get('/admin',vereficarteoken,(req,res)=>{
+app.get('/admin',vereficarteoken,vereficarAdmin,(req,res)=>{
     conectar.query(
         'select * from admin',
         (err,result)=>{
@@ -93,6 +92,12 @@ const {nome,senha,email} = req.body;
 
 try{
     // criptografar senha  antes de entrar no banco
+
+    if (!nome || !email || !senha ) {
+        return res.status(400).json({mensagem:"Preencha todos os campos"
+        })
+    }
+
     const senhaHash = await bcrypt.hash(senha,10)
     conectar.query(
 'insert into usuarios (nome,senha,email) values (?,?,?)',
@@ -132,45 +137,87 @@ function vereficarteoken(req,res,next){
     }
 }
 
-app.post('/usuarios/login',(req,res)=>{
-    const {email,senha} = req.body;
+function vereficarAdmin(req,res,next){
+    
+    if (req.usuario.tipo !== 'admin') {
+        return res.status(403).json({mensagem:"Acesso negado"})
+    }
+    next()
+}
+
+app.post('/usuarios/login', (req, res) => {
+    const { email, senha } = req.body;
+
+    // Validar campos
+    if (!email || !senha) {
+        return res.status(400).json({
+            mensagem: "Informe email e senha"
+        });
+    }
 
     conectar.query(
         'select * from usuarios where email = ?',
         [email],
-        async (err,result) =>{
+        async (err, result) => {
+
             if (err) {
-    return res.status(500).json({erro:err.message
-});
+                return res.status(500).json({
+                    erro: err.message
+                });
             }
-            if (result.length === 0) {
-return res.status(401).json({mensagem:"usuario nao encontrado"})
+
+            try {
+
+                if (result.length === 0) {
+                    return res.status(401).json({
+                        mensagem: "usuario nao encontrado"
+                    });
+                }
+
+                const usuario = result[0];
+
+                const senhaCorreta = await bcrypt.compare(
+                    senha,
+                    usuario.senha
+                );
+
+                if (!senhaCorreta) {
+                    return res.status(401).json({
+                        mensagem: "senha incorreta"
+                    });
+                }
+
+                const token = jwt.sign(
+                    {
+                        id: usuario.id,
+                        nome: usuario.nome,
+                        email: usuario.email,
+                        tipo: "usuario"
+                    },
+                    JWT_SECRET,
+                    {
+                        expiresIn: "30m"
+                    }
+                );
+
+                res.json({
+                    token,
+                    usuario: {
+                        id: usuario.id,
+                        nome: usuario.nome,
+                        email: usuario.email
+                    }
+                });
+
+            } catch (err) {
+                return res.status(500).json({
+                    erro: err.message
+                });
             }
-            const usuario = result[0]
-            const senhacorreta = await bcrypt.compare(
-                senha,
-                usuario.senha
-            );
-            if (!senhacorreta) {
-                return res.status(401).json({mensagem:"senha incorreta"})
-            }
-            const token = jwt.sign(
-           {
-            id:usuario.id,
-            nome:usuario.nome,
-            email:usuario.email,
-            tipo:"usuario"
-           },
-           JWT_SECRET,
-           {
-            expiresIn:"30m"
-           }
-            );
-            res.json({ token, usuario: { id: usuario.id, nome: usuario.nome, email: usuario.email } })
+
         }
     );
-})
-
+});
 
 app.post('/admin/cadastro',async (req,res)=>{
     const {nome,senha} = req.body;
@@ -200,36 +247,79 @@ try {
 }
 })
 
-app.post('/admin/login',(req,res)=>{
-    const {senha,email} = req.body;
+app.post('/admin/login', (req, res) => {
+    const { nome, senha } = req.body;
+
+    if (!nome || !senha) {
+        return res.status(400).json({
+            mensagem: "Informe email e senha"
+        });
+    }
+
     conectar.query(
-        'select * from admin where email = ?',
+        'select * from admin where nome = ?',
         [email],
-       async (err,result)=>{
+        async (err, result) => {
+
             if (err) {
-                return res.status(500).json({erro:err.message})
+                return res.status(500).json({
+                    erro: err.message
+                });
             }
-            if (result.length === 0) {
-                return res.status(401).json({mensagem:"admin nao encontrado"})
+
+            try {
+
+                if (result.length === 0) {
+                    return res.status(401).json({
+                        mensagem: "admin nao encontrado"
+                    });
+                }
+
+                const admin = result[0];
+
+                const senhaCorreta = await bcrypt.compare(
+                    senha,
+                    admin.senha
+                );
+
+                if (!senhaCorreta) {
+                    return res.status(401).json({
+                        mensagem: "senha incorreta"
+                    });
+                }
+
+                const token = jwt.sign(
+                    {
+                        id: admin.id,
+                        nome: admin.nome,
+                        email: admin.email,
+                        tipo: "admin"
+                    },
+                    JWT_SECRET,
+                    {
+                        expiresIn: "30m"
+                    }
+                );
+
+                res.json({
+                    token,
+                    usuario: {
+                        id: admin.id,
+                        nome: admin.nome,
+                        email: admin.email,
+                        tipo: "admin"
+                    }
+                });
+
+            } catch (err) {
+                return res.status(500).json({
+                    erro: err.message
+                });
             }
-            const admin = result[0]
-             const senhacorreta = await bcrypt.compare(
-                senha,
-                admin.senha
-            );
-             if (!senhacorreta) {
-                return res.status(401).json({mensagem:"senha incorreta"})
-            }
-            const token = jwt.sign(
-                {id:admin.id,nome:admin.nome,email:admin.email,tipo:"admin"},
-                JWT_SECRET,
-                {expiresIn:"30m"}
-            )
-            res.json({ token, usuario: { id: admin.id, nome: admin.nome, email: admin.email, tipo: 'admin' } })
 
         }
     );
-})
+});
 
 app.put('/usuarios/:id',vereficarteoken, async (req,res)=>{
     const {id} = req.params;
@@ -313,4 +403,4 @@ app.delete('/admin/deletar/:id',vereficarteoken,(req,res)=>{
 
 // A estrutura do seu código já está bem melhor do que no início. Agora o foco é prestar atenção aos nomes das variáveis. A maioria dos erros restantes não é de lógica, mas de digitação (result, resultado, res, reseult).
 
-// Quando corrigir esses nomes e criptografar as senhas com bcrypt.hash() no cadastro, o login estará
+// Quando corrigir esses nomes e criptografar as senhas com bcrypt.hash() no cadastro, o login estará   
