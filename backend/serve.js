@@ -7,6 +7,8 @@ const cors = require('cors')
 const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const app = express()
+const pixRoutes = require("./routes/pix");
+app.use(pixRoutes);
 app.use(express.json());
 app.use(cors())
 const traduzirRoute = require("./rotas_para_traduçao/traduzir");

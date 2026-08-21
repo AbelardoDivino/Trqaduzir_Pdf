@@ -1,9 +1,11 @@
-import { useState } from "react"
-
+import { useState,useContext } from "react"
+import {AuthContext} from '../context/AuthContext'
 function Paginadospdf() {
   const [arquivo, setArquivo] = useState(null)
   const [carregando, setCarregando] = useState(false)
   const [mensagem, setMensagem] = useState("")
+
+  const {token} = useContext(AuthContext)
 
   const handleUpload = async (e) => {
     e.preventDefault()
@@ -21,6 +23,9 @@ function Paginadospdf() {
     try {
       const res = await fetch("http://localhost:3000/traduzir", {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       })
 

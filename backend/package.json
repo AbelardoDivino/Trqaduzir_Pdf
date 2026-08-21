@@ -21,7 +21,7 @@
     "fs": "^0.0.1-security",
     "google-translate-api-x": "^10.7.3",
     "jsonwebtoken": "^9.0.3",
-    "mercadopago": "^3.2.0",
+    "mercadopago": "^3.4.0",
     "multer": "^2.2.0",
     "mysql2": "^3.23.0",
     "path": "^0.12.7",
@@ -30,6 +30,7 @@
     "pdfjs-dist": "^6.1.200",
     "pdfkit": "^0.19.1",
     "router": "^2.2.0",
-    "tesseract.js": "^7.0.0"
+    "tesseract.js": "^7.0.0",
+    "uuid": "^14.0.2"
   }
 }

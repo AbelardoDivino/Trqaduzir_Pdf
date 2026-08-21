@@ -1,9 +1,7 @@
-// especificar o login usu e admin
 import { useState } from "react"
 import { useContext } from "react"
 import {useNavigate} from "react-router-dom"
 import {AuthContext} from "../context/AuthContext"
-import { json } from "express"
 
 function Login(){
 
@@ -35,7 +33,7 @@ function Login(){
             }
             else{
                 const errorData = await response.json()
-                setErro(errorData.mensagem) || "Erro ao fazer o login. Verefique suas credenciais"
+                setErro(errorData.mensagem || "Erro ao fazer o login. Verifique suas credenciais")
              }
         }catch(err){
             setErro("Erro de conexao com o servidor ")
@@ -43,12 +41,11 @@ function Login(){
     }
 
     return <div style={{padding:"20px", maxWidth:"400px", margin:" 0 auto "}}>  
-    //valdiar os dados no back
 
     <h2>Login</h2>
     {erro && <p style={{color:"red"}}> {erro} </p>}
 
-    <form onSubmit={{handleSubmit}}>
+    <form onSubmit={handleSubmit}>
         <div style={{marginBottom:"15px"}}>
             <label>Email:</label>
             <br></br>
