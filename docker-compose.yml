@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - DB_HOST=host.docker.internal
+      - DB_USER=seu_usuario
+      - DB_PASSWORD=sua_senha
+      - DB_NAME=seu_banco
+      - JWT_SECRET=sua_chave_secreta
+      - MP_ACCESS_TOKEN=seu_token_mercado_pago
+    restart: always
+
+  frontend:
+    build: ./frontend/traduzir_pdf
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
