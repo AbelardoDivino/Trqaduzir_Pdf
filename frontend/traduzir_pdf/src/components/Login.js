@@ -2,6 +2,7 @@ import { useState } from "react"
 import { useContext } from "react"
 import {useNavigate} from "react-router-dom"
 import {AuthContext} from "../context/AuthContext"
+import { GoogleLogin } from "@react-oauth/google"
 
 function Login(){
 
@@ -40,6 +41,25 @@ function Login(){
         }
     }
 
+    const handleGoogleSuccess = async (credentialResponse) => {
+        try {
+            const res = await fetch("http://localhost:3000/usuarios/google", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token: credentialResponse.credential })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                login(data.token, data.usuario);
+                navigate("/");
+            } else {
+                alert(data.erro || "Erro no login com google");
+            }
+        } catch (err) {
+            alert("Erro de conexão com o servidor");
+        }
+    };
+
     return <div style={{padding:"20px", maxWidth:"400px", margin:" 0 auto "}}>  
 
     <h2>Login</h2>
@@ -70,6 +90,15 @@ function Login(){
     >
     </input>
     </div>
+
+    <div style={{marginTop:"20px", marginBottom:"15px"}}>
+        <GoogleLogin
+     onSuccess={handleGoogleSuccess}
+            onError={() => alert("Falha ao fazer login com o Google")}
+        />
+    </div>
+
+
     <button
     type="submit"
     style={{padding:"10px 20px", cursor:"pointer"}}

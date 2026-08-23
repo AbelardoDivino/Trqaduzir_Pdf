@@ -8,6 +8,8 @@ const bcrypt = require('bcrypt')
 const jwt = require('jsonwebtoken')
 const app = express()
 const pixRoutes = require("./routes/pix");
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client("22878989052-r2d4br0ntugjf63makag0finmfach8g5.apps.googleusercontent.com");
 app.use(pixRoutes);
 app.use(express.json());
 app.use(cors())
@@ -220,6 +222,59 @@ app.post('/usuarios/login', (req, res) => {
         }
     );
 });
+
+app.post('/usuarios/google', async (req, res) => {
+    const { token } = req.body;
+
+    try {
+        const ticket = await client.verifyIdToken({
+            idToken: token,
+            audience: "22878989052-r2d4br0ntugjf63makag0finmfach8g5.apps.googleusercontent.com",
+        });
+
+        const payload = ticket.getPayload();
+        const { email, name } = payload;
+
+        conectar.query('select * from usuarios where email = ?', [email], async (err, result) => {
+            if (err) return res.status(500).json({ erro: err.message });
+
+            let usuarioId;
+            let nomeUsuario = name;
+
+            if (result.length === 0) {
+                conectar.query(
+                    'insert into usuarios (nome, email, senha) values (?, ?, ?)',
+                    [name, email, ""],
+                    (errInsert, resultInsert) => {
+                        if (errInsert) return res.status(500).json({ erro: errInsert.message });
+                        usuarioId = resultInsert.insertId;
+                        gerarTokenEEnviar(usuarioId, nomeUsuario, email, res);
+                    }
+                );
+            } else {
+                usuarioId = result[0].id;
+                nomeUsuario = result[0].nome;
+                gerarTokenEEnviar(usuarioId, nomeUsuario, email, res);
+            }
+        });
+
+    } catch (error) {
+        res.status(401).json({ erro: "Token do Google inválido", detalhe: error.message });
+    }
+});
+
+function gerarTokenEEnviar(id, nome, email, res) {
+    const token = jwt.sign(
+        { id, nome, email, tipo: "usuario" },
+        JWT_SECRET,
+        { expiresIn: "30m" }
+    );
+
+    res.json({
+        token,
+        usuario: { id, nome, email }
+    });
+}
 
 app.post('/admin/cadastro',async (req,res)=>{
     const {nome,senha} = req.body;
