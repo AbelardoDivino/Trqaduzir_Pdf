@@ -20,6 +20,10 @@ mongoose.connect(MONGO_URI)
   .then(() => console.log("Conectado ao MongoDB Atlas com sucesso!"))
   .catch((err) => console.log("Erro ao conectar ao MongoDB:", err));
 
+app.get('/', (req, res) => {
+  res.json({ status: "API do Traduzir PDF online", dbState: mongoose.connection.readyState });
+});
+
 // Schemas do Mongoose
 const UsuarioSchema = new mongoose.Schema({
   nome: { type: String, required: true },
@@ -107,6 +111,7 @@ app.post('/usuarios/cadastro', async (req, res) => {
       id: novoUsuario._id
     });
   } catch (err) {
+    console.error("Erro no cadastro:", err);
     res.status(500).json({ erro: err.message });
   }
 });
