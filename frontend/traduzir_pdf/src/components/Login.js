@@ -4,6 +4,8 @@ import {useNavigate} from "react-router-dom"
 import {AuthContext} from "../context/AuthContext"
 import { GoogleLogin } from "@react-oauth/google"
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
+
 function Login(){
 
     const [email,setEmail] = useState("")
@@ -18,7 +20,7 @@ function Login(){
         setErro("")
 
         try{
-            const response = await fetch("http://localhost:3000/usuarios/login",{
+            const response = await fetch(`${API_URL}/usuarios/login`,{
                 method:"POST",
                 headers:{
                     "Content-Type":"application/json",
@@ -43,7 +45,7 @@ function Login(){
 
     const handleGoogleSuccess = async (credentialResponse) => {
         try {
-            const res = await fetch("http://localhost:3000/usuarios/google", {
+            const res = await fetch(`${API_URL}/usuarios/google`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ token: credentialResponse.credential })

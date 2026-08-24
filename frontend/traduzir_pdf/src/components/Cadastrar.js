@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
+
 function Cadastrar(){
     const [nome, setNome] = useState("");
     const [email, setEmail] = useState("");
@@ -22,7 +24,7 @@ function Cadastrar(){
         }
 
         try {
-            const response = await fetch("http://localhost:3000/usuarios/cadastro", {
+            const response = await fetch(`${API_URL}/usuarios/cadastro`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

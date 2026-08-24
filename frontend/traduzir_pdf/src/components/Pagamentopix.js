@@ -1,6 +1,8 @@
 import { useState, useEffect, useContext } from "react"
 import { AuthContext } from '../context/AuthContext'
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
+
 function PagamentoPix() {
   const [pix, setPix] = useState(null)
   const [carregando, setCarregando] = useState(false)
@@ -10,7 +12,7 @@ function PagamentoPix() {
   const gerarPix = async () => {
     setCarregando(true)
     try {
-      const res = await fetch("http://localhost:3000/criar-pix", {
+      const res = await fetch(`${API_URL}/criar-pix`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -43,7 +45,7 @@ function PagamentoPix() {
 
     const intervalo = setInterval(async () => {
       try {
-        const res = await fetch(`http://localhost:3000/consultar-pagamento/${pix.id}`)
+        const res = await fetch(`${API_URL}/consultar-pagamento/${pix.id}`)
         const data = await res.json()
 
         if (data.status === "approved") {

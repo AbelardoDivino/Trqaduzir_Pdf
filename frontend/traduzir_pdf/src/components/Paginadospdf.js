@@ -1,5 +1,8 @@
 import { useState,useContext } from "react"
 import {AuthContext} from '../context/AuthContext'
+
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
+
 function Paginadospdf() {
   const [arquivo, setArquivo] = useState(null)
   const [carregando, setCarregando] = useState(false)
@@ -21,7 +24,7 @@ function Paginadospdf() {
     formData.append("pdf", arquivo)
 
     try {
-      const res = await fetch("http://localhost:3000/traduzir", {
+      const res = await fetch(`${API_URL}/traduzir`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
