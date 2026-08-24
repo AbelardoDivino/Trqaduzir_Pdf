@@ -23,6 +23,7 @@
     "google-translate-api-x": "^10.7.3",
     "jsonwebtoken": "^9.0.3",
     "mercadopago": "^3.4.0",
+    "mongoose": "^9.9.3",
     "multer": "^2.2.0",
     "mysql2": "^3.23.0",
     "path": "^0.12.7",

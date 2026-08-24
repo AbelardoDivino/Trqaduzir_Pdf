@@ -1,463 +1,235 @@
-// validar dados de login
-// arrumar api do mercado pago 
-require('dotenv').config()
-const mysql = require('mysql2')
-const express = require('express')
-const cors = require('cors')
-const bcrypt = require('bcrypt')
-const jwt = require('jsonwebtoken')
-const app = express()
-const pixRoutes = require("./routes/pix");
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const { OAuth2Client } = require('google-auth-library');
+
 const client = new OAuth2Client("22878989052-r2d4br0ntugjf63makag0finmfach8g5.apps.googleusercontent.com");
-app.use(pixRoutes);
+const JWT_SECRET = process.env.JWT_SECRET || 'F$M7yXc*GFYX%e8';
+
+const app = express();
 app.use(express.json());
-app.use(cors())
+app.use(cors());
+
+// Conexão com MongoDB Atlas
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://aaaaaaaaaaasafafe_db_user:VriJ4bwVoKj385cZ@cluster0.fylkysy.mongodb.net/traduzirpdf?retryWrites=true&w=majority";
+
+mongoose.connect(MONGO_URI)
+  .then(() => console.log("Conectado ao MongoDB Atlas com sucesso!"))
+  .catch((err) => console.log("Erro ao conectar ao MongoDB:", err));
+
+// Schemas do Mongoose
+const UsuarioSchema = new mongoose.Schema({
+  nome: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  senha: { type: String, default: "" }
+}, { timestamps: true });
+
+const Usuario = mongoose.model('Usuario', UsuarioSchema);
+
+const AdminSchema = new mongoose.Schema({
+  nome: { type: String, required: true },
+  email: { type: String, default: "" },
+  senha: { type: String, required: true }
+}, { timestamps: true });
+
+const Admin = mongoose.model('Admin', AdminSchema);
+
+// Rotas do Mercado Pago (PIX) e Tradução
+const pixRoutes = require("./routes/pix");
+app.use(pixRoutes);
+
 const traduzirRoute = require("./rotas_para_traduçao/traduzir");
 app.use(traduzirRoute);
-const JWT_SECRET = process.env.JWT_SECRET //add chave secreta
 
-
-const conectar = mysql.createConnection({
-host:process.env.DB_HOST,
-user:process.env.DB_USER,
-password:process.env.DB_PASSWORD,
-database:process.env.DB_NAME
-})
-
-conectar.connect((err)=>{
-    if (err) {
-        console.log("erro ao conectar",err)
-    }
-    console.log("conectado")
-})
-
-const PORT = process.env.PORT 
-
-app.listen(PORT,()=>{
-console.log("servidor rodando na porta",PORT)
-})
-
-app.get('/usuarios',vereficarteoken,(req,res)=>{
-conectar.query(
- 'select * from usuarios',
-  (err,result)=>{
-    if (err) {
-        return res.status(500).json(err)
-    }
-    res.json(result)
+// Middleware de verificação de token JWT
+function vereficarteoken(req, res, next) {
+  const autheader = req.headers['authorization'];
+  if (!autheader) {
+    return res.status(401).json({ erro: "Token não fornecido" });
   }
-);
-})
-
-app.get('/usuarios/:id',vereficarteoken,(req,res)=>{
-    const {id} = req.params;
-conectar.query(
-'select * from usuarios where id = ?',
-[id],
-(err,result)=>{
-    if (err) {
-        return res.status(500).json(err)
-    }
-    res.json(result)
+  const token = autheader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.usuario = decoded;
+    next();
+  } catch {
+    return res.status(401).json({ erro: "Token inválido ou expirado" });
+  }
 }
-);
-})
 
-app.get('/admin',vereficarteoken,vereficarAdmin,(req,res)=>{
-    conectar.query(
-        'select * from admin',
-        (err,result)=>{
-            if (err) {
-                return res.status(500).json(err)
-            }
-            res.json(result)
-        }
-    );
-})
+function vereficarAdmin(req, res, next) {
+  if (req.usuario.tipo !== 'admin') {
+    return res.status(403).json({ mensagem: "Acesso negado" });
+  }
+  next();
+}
 
-app.get('/admin/:id',vereficarteoken,(req,res)=>{
-    const {id} = req.params
-    conectar.query(
-        'select * from admin where id = ?',
-        [id],
-        (err,result)=>{
-            if (err) {
-                return res.status(500).json(err)
-            }
-            res.json(result)
-        }
-    );
-})
+// Rotas da API
+app.get('/usuarios', vereficarteoken, async (req, res) => {
+  try {
+    const usuarios = await Usuario.find({}, '-senha');
+    res.json(usuarios);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
 
-app.post('/usuarios/cadastro',async (req,res)=>{
+app.get('/usuarios/:id', vereficarteoken, async (req, res) => {
+  try {
+    const usuario = await Usuario.findById(req.params.id, '-senha');
+    if (!usuario) return res.status(404).json({ mensagem: "Usuário não encontrado" });
+    res.json(usuario);
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
 
-const {nome,senha,email} = req.body;
+app.post('/usuarios/cadastro', async (req, res) => {
+  const { nome, senha, email } = req.body;
+  if (!nome || !email || !senha) {
+    return res.status(400).json({ mensagem: "Preencha todos os campos" });
+  }
 
-try{
-    // criptografar senha  antes de entrar no banco
-
-    if (!nome || !email || !senha ) {
-        return res.status(400).json({mensagem:"Preencha todos os campos"
-        })
+  try {
+    const usuarioExiste = await Usuario.findOne({ email });
+    if (usuarioExiste) {
+      return res.status(400).json({ mensagem: "E-mail já cadastrado" });
     }
 
-    const senhaHash = await bcrypt.hash(senha,10)
-    conectar.query(
-'insert into usuarios (nome,senha,email) values (?,?,?)',
-[nome,senhaHash,email],
-(err,result)=>{
-    if (err) {
-        return res.status(500).json({
-            erro:err.message
-        })
-    }
+    const senhaHash = await bcrypt.hash(senha, 10);
+    const novoUsuario = await Usuario.create({ nome, email, senha: senhaHash });
+
     res.status(201).json({
-        mensagem:"cadastro realizado com sucesso",
-        id:result.insertId
-    })
+      mensagem: "Cadastro realizado com sucesso",
+      id: novoUsuario._id
+    });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
   }
-);
-} catch (err){
-    res.status(500).json({
-        erro:err.message
-    })
-}
-})
-
-function vereficarteoken(req,res,next){
-    const autheader = req.headers['authorization']
-    if (!autheader) {
-        return res.status(401).json({erro:"Token não fornecido"})
-    }
-    const token = autheader.split(' ')[1]
-    try{
-        const decoded = jwt.verify(token,JWT_SECRET)
-        req.usuario = decoded
-        next()
-    }
-    catch{
-        return res.status(401).json({erro:"token invalido ou expirado"})
-    }
-}
-
-function vereficarAdmin(req,res,next){
-    
-    if (req.usuario.tipo !== 'admin') {
-        return res.status(403).json({mensagem:"Acesso negado"})
-    }
-    next()
-}
-
-app.post('/usuarios/login', (req, res) => {
-    const { email, senha } = req.body;
-
-    // Validar campos
-    if (!email || !senha) {
-        return res.status(400).json({
-            mensagem: "Informe email e senha"
-        });
-    }
-
-    conectar.query(
-        'select * from usuarios where email = ?',
-        [email],
-        async (err, result) => {
-
-            if (err) {
-                return res.status(500).json({
-                    erro: err.message
-                });
-            }
-
-            try {
-
-                if (result.length === 0) {
-                    return res.status(401).json({
-                        mensagem: "usuario nao encontrado"
-                    });
-                }
-
-                const usuario = result[0];
-
-                const senhaCorreta = await bcrypt.compare(
-                    senha,
-                    usuario.senha
-                );
-
-                if (!senhaCorreta) {
-                    return res.status(401).json({
-                        mensagem: "senha incorreta"
-                    });
-                }
-
-                const token = jwt.sign(
-                    {
-                        id: usuario.id,
-                        nome: usuario.nome,
-                        email: usuario.email,
-                        tipo: "usuario"
-                    },
-                    JWT_SECRET,
-                    {
-                        expiresIn: "30m"
-                    }
-                );
-
-                res.json({
-                    token,
-                    usuario: {
-                        id: usuario.id,
-                        nome: usuario.nome,
-                        email: usuario.email
-                    }
-                });
-
-            } catch (err) {
-                return res.status(500).json({
-                    erro: err.message
-                });
-            }
-
-        }
-    );
 });
 
-app.post('/usuarios/google', async (req, res) => {
-    const { token } = req.body;
+app.post('/usuarios/login', async (req, res) => {
+  const { email, senha } = req.body;
+  if (!email || !senha) {
+    return res.status(400).json({ mensagem: "Informe e-mail e senha" });
+  }
 
-    try {
-        const ticket = await client.verifyIdToken({
-            idToken: token,
-            audience: "22878989052-r2d4br0ntugjf63makag0finmfach8g5.apps.googleusercontent.com",
-        });
-
-        const payload = ticket.getPayload();
-        const { email, name } = payload;
-
-        conectar.query('select * from usuarios where email = ?', [email], async (err, result) => {
-            if (err) return res.status(500).json({ erro: err.message });
-
-            let usuarioId;
-            let nomeUsuario = name;
-
-            if (result.length === 0) {
-                conectar.query(
-                    'insert into usuarios (nome, email, senha) values (?, ?, ?)',
-                    [name, email, ""],
-                    (errInsert, resultInsert) => {
-                        if (errInsert) return res.status(500).json({ erro: errInsert.message });
-                        usuarioId = resultInsert.insertId;
-                        gerarTokenEEnviar(usuarioId, nomeUsuario, email, res);
-                    }
-                );
-            } else {
-                usuarioId = result[0].id;
-                nomeUsuario = result[0].nome;
-                gerarTokenEEnviar(usuarioId, nomeUsuario, email, res);
-            }
-        });
-
-    } catch (error) {
-        res.status(401).json({ erro: "Token do Google inválido", detalhe: error.message });
+  try {
+    const usuario = await Usuario.findOne({ email });
+    if (!usuario) {
+      return res.status(401).json({ mensagem: "Usuário não encontrado" });
     }
-});
 
-function gerarTokenEEnviar(id, nome, email, res) {
+    const senhaCorreta = await bcrypt.compare(senha, usuario.senha);
+    if (!senhaCorreta) {
+      return res.status(401).json({ mensagem: "Senha incorreta" });
+    }
+
     const token = jwt.sign(
-        { id, nome, email, tipo: "usuario" },
-        JWT_SECRET,
-        { expiresIn: "30m" }
+      { id: usuario._id, nome: usuario.nome, email: usuario.email, tipo: "usuario" },
+      JWT_SECRET,
+      { expiresIn: "30m" }
     );
 
     res.json({
-        token,
-        usuario: { id, nome, email }
+      token,
+      usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email }
     });
-}
-
-app.post('/admin/cadastro',async (req,res)=>{
-    const {nome,senha} = req.body;
-
-try {
-     // criptografar a senha
-     const senhaHash = await bcrypt.hash(senha,10)
-    conectar.query(
-        'insert into admin(nome,senha) values(?,?)',
-        [nome,senhaHash],
-        (err,result)=>{
-            if (err) {
-                return res.status(500).json({
-                    erro:err.message
-                })
-            }
-            res.status(201).json({
-                mensagem:"Administrator cadastrado com sucesso",
-                id:result.insertId
-            })
-        }
-    );
-} catch (err){
-    res.status(500).json({
-        erro:err.message
-    })
-}
-})
-
-app.post('/admin/login', (req, res) => {
-    const { nome, senha } = req.body;
-
-    if (!nome || !senha) {
-        return res.status(400).json({
-            mensagem: "Informe email e senha"
-        });
-    }
-
-    conectar.query(
-        'select * from admin where nome = ?',
-        [email],
-        async (err, result) => {
-
-            if (err) {
-                return res.status(500).json({
-                    erro: err.message
-                });
-            }
-
-            try {
-
-                if (result.length === 0) {
-                    return res.status(401).json({
-                        mensagem: "admin nao encontrado"
-                    });
-                }
-
-                const admin = result[0];
-
-                const senhaCorreta = await bcrypt.compare(
-                    senha,
-                    admin.senha
-                );
-
-                if (!senhaCorreta) {
-                    return res.status(401).json({
-                        mensagem: "senha incorreta"
-                    });
-                }
-
-                const token = jwt.sign(
-                    {
-                        id: admin.id,
-                        nome: admin.nome,
-                        email: admin.email,
-                        tipo: "admin"
-                    },
-                    JWT_SECRET,
-                    {
-                        expiresIn: "30m"
-                    }
-                );
-
-                res.json({
-                    token,
-                    usuario: {
-                        id: admin.id,
-                        nome: admin.nome,
-                        email: admin.email,
-                        tipo: "admin"
-                    }
-                });
-
-            } catch (err) {
-                return res.status(500).json({
-                    erro: err.message
-                });
-            }
-
-        }
-    );
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
 });
 
-app.put('/usuarios/:id',vereficarteoken, async (req,res)=>{
-    const {id} = req.params;
-    const {nome,senha,email} = req.body;
+app.post('/usuarios/google', async (req, res) => {
+  const { token } = req.body;
+  try {
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: "22878989052-r2d4br0ntugjf63makag0finmfach8g5.apps.googleusercontent.com",
+    });
 
-    try{
-        const senhaHash = await bcrypt.hash(senha,10)
+    const payload = ticket.getPayload();
+    const { email, name } = payload;
 
-            conectar.query(
-        'update usuarios set nome = ? , senha =  ?, email = ? where id = ?',
-        [nome,senhaHash,email,id],
-        (err,result)=>{
-            if (err) {
-                return res.status(500).json({erro:err.message})
-            }
-            res.json({mensagem:"usuario atualizado"})
-        }
-    );
-    }catch(err){
-        return res.status(500).json({erro:err.message})
+    let usuario = await Usuario.findOne({ email });
+    if (!usuario) {
+      usuario = await Usuario.create({ nome: name, email, senha: "" });
     }
 
-})
+    const appToken = jwt.sign(
+      { id: usuario._id, nome: usuario.nome, email: usuario.email, tipo: "usuario" },
+      JWT_SECRET,
+      { expiresIn: "30m" }
+    );
 
-app.put('/admin/:id',vereficarteoken, async(req,res)=>{
-const {id} = req.params;
-const {nome,senha} = req.body;
+    res.json({
+      token: appToken,
+      usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email }
+    });
+  } catch (error) {
+    res.status(401).json({ erro: "Token do Google inválido", detalhe: error.message });
+  }
+});
 
-try{
-    const senhaHash = await bcrypt.hash(senha,10)
-conectar.query(
-    'update admin set nome = ?, senha =? where id = ?',
-    [nome,senhaHash,id],
-    (err,result)=>{
-        if (err) {
-            return res.status(500).json({erro:err.message
-})
-        }
-        res.json({mensagem:"administrador cadastrado"})
+app.post('/admin/cadastro', async (req, res) => {
+  const { nome, senha, email } = req.body;
+  try {
+    const senhaHash = await bcrypt.hash(senha, 10);
+    const novoAdmin = await Admin.create({ nome, email: email || "", senha: senhaHash });
+    res.status(201).json({
+      mensagem: "Administrador cadastrado com sucesso",
+      id: novoAdmin._id
+    });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
+
+app.post('/admin/login', async (req, res) => {
+  const { nome, senha } = req.body;
+  if (!nome || !senha) {
+    return res.status(400).json({ mensagem: "Informe nome e senha" });
+  }
+
+  try {
+    const admin = await Admin.findOne({ nome });
+    if (!admin) {
+      return res.status(401).json({ mensagem: "Admin não encontrado" });
     }
-);
-}catch(err){
-return res.status(500).json({erro:err.message})
-}
 
+    const senhaCorreta = await bcrypt.compare(senha, admin.senha);
+    if (!senhaCorreta) {
+      return res.status(401).json({ mensagem: "Senha incorreta" });
+    }
 
-
-})
-
-app.delete('/usuarios/deletar/:id',vereficarteoken,(req,res)=>{
-    const  {id} = req.params;
-    conectar.query(
-        'delete  from usuarios where id = ?',
-        [id],
-        (err,result)=>{
-            if (err) {
-                return res.status(500).json({erro:err.message})
-            }
-            res.json({mensagem:"usuario deletado"})
-        }
-    );
-})
-
-
-app.delete('/admin/deletar/:id',vereficarteoken,(req,res)=>{
-
-    const {id} = req.params;
-    conectar.query(
-        'delete  from admin where id = ?',
-        [id],
-        (err,result)=>{
-            if (err) {
-                return res.status(500).json({erro:err.message})
-            }
-            res.json({mensagem:"admin deletado com sucesso"})
-        }
+    const token = jwt.sign(
+      { id: admin._id, nome: admin.nome, tipo: "admin" },
+      JWT_SECRET,
+      { expiresIn: "30m" }
     );
 
-})
+    res.json({
+      token,
+      usuario: { id: admin._id, nome: admin.nome, tipo: "admin" }
+    });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
 
+app.delete('/usuarios/deletar/:id', vereficarteoken, async (req, res) => {
+  try {
+    await Usuario.findByIdAndDelete(req.params.id);
+    res.json({ mensagem: "Usuário deletado" });
+  } catch (err) {
+    res.status(500).json({ erro: err.message });
+  }
+});
 
-// A estrutura do seu código já está bem melhor do que no início. Agora o foco é prestar atenção aos nomes das variáveis. A maioria dos erros restantes não é de lógica, mas de digitação (result, resultado, res, reseult).
-
-// Quando corrigir esses nomes e criptografar as senhas com bcrypt.hash() no cadastro, o login estará   
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log("Servidor rodando na porta", PORT);
+});
