@@ -4,7 +4,7 @@ import {useNavigate} from "react-router-dom"
 import {AuthContext} from "../context/AuthContext"
 import { GoogleLogin } from "@react-oauth/google"
 
-const API_URL = (process.env.REACT_APP_API_URL || "http://localhost:3000").replace(/\/+$/, "");
+const API_URL = (process.env.REACT_APP_API_URL || "https://trqaduzir-pdf.onrender.com").replace(/\/+$/, "");
 
 function Login(){
 
