@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from "react"
 import { AuthContext } from '../context/AuthContext'
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3000";
+const API_URL = (process.env.REACT_APP_API_URL || "http://localhost:3000").replace(/\/+$/, "");
 
 function PagamentoPix() {
   const [pix, setPix] = useState(null)
