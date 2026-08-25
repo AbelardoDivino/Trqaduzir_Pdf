@@ -24,11 +24,21 @@ app.get('/', (req, res) => {
   res.json({ status: "API do Traduzir PDF online", dbState: mongoose.connection.readyState });
 });
 
+function isEmailValido(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
+}
+
 // Schemas do Mongoose
 const UsuarioSchema = new mongoose.Schema({
   nome: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  senha: { type: String, default: "" }
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  senha: { type: String, default: "" },
+  creditos: { type: Number, default: 3 },
+  usoDiario: {
+    data: { type: String, default: "" },
+    traducoes: { type: Number, default: 0 },
+    paginas: { type: Number, default: 0 }
+  }
 }, { timestamps: true });
 
 const Usuario = mongoose.model('Usuario', UsuarioSchema);
@@ -92,9 +102,16 @@ app.get('/usuarios/:id', vereficarteoken, async (req, res) => {
 });
 
 app.post('/usuarios/cadastro', async (req, res) => {
-  const { nome, senha, email } = req.body;
+  let { nome, senha, email } = req.body;
   if (!nome || !email || !senha) {
     return res.status(400).json({ mensagem: "Preencha todos os campos" });
+  }
+  email = String(email).toLowerCase().trim();
+  if (!isEmailValido(email)) {
+    return res.status(400).json({ mensagem: "E-mail inválido" });
+  }
+  if (senha.length < 6) {
+    return res.status(400).json({ mensagem: "Senha deve ter no mínimo 6 caracteres" });
   }
 
   try {
@@ -117,10 +134,11 @@ app.post('/usuarios/cadastro', async (req, res) => {
 });
 
 app.post('/usuarios/login', async (req, res) => {
-  const { email, senha } = req.body;
+  let { email, senha } = req.body;
   if (!email || !senha) {
     return res.status(400).json({ mensagem: "Informe e-mail e senha" });
   }
+  email = String(email).toLowerCase().trim();
 
   try {
     const usuario = await Usuario.findOne({ email });
