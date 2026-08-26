@@ -78,3 +78,4 @@ Crie um banco de dados e as tabelas necessárias (`usuarios`, `admin`, `pagament
 
 ## 📅 Próximos Passos
 - Implementação de Login / Cadastro com Google (Gmail).
+- Site : https://trqaduzir-livros-j625lm1oz-abelardodivinos-projects.vercel.app/
