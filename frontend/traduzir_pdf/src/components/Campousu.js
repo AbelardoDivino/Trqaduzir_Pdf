@@ -17,7 +17,8 @@ function Campousu(){
         if (res.ok) { setCreditos(data.creditos); setUso(data.usoDiario) }
       } catch {}
     }
-    useEffect(()=>{ if(token) carregar() },[token])
+    useEffect(()=>{ if(token) carregar() // eslint-disable-next-line react-hooks/exhaustive-deps
+    },[token])
 
     if (!usuario) return <div className="card"><p>Você precisa estar logado. <Link to="/login">Entrar</Link></p></div>
 

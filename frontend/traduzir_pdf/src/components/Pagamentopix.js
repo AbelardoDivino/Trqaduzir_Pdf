@@ -39,6 +39,7 @@ function PagamentoPix({ onCredito }) {
       } catch {}
     }, 3000)
     return () => clearInterval(intervalo)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pix?.id])
 
   return (
