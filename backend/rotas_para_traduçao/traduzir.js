@@ -16,7 +16,7 @@ function getAuthUser(req) {
     const t = h.split(" ")[1];
     if (!t) return null;
     const jwt = require("jsonwebtoken");
-    return jwt.verify(t, process.env.JWT_SECRET || 'F$M7yXc*GFYX%e8');
+    return jwt.verify(t, process.env.JWT_SECRET);
   } catch { return null; }
 }
 

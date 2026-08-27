@@ -12,7 +12,7 @@ import {GoogleOAuthProvider} from '@react-oauth/google'
 
 function App() {
   return (
-      <GoogleOAuthProvider clientId="22878989052-r2d4br0ntugjf63makag0finmfach8g5.apps.googleusercontent.com"> 
+      <GoogleOAuthProvider clientId={process.env.REACT_APP_GOOGLE_CLIENT_ID}> 
     <div className="App">
       <AuthProvider>
         <BrowserRouter>

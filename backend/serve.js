@@ -6,15 +6,19 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const { OAuth2Client } = require('google-auth-library');
 
-const client = new OAuth2Client("22878989052-r2d4br0ntugjf63makag0finmfach8g5.apps.googleusercontent.com");
-const JWT_SECRET = process.env.JWT_SECRET || 'F$M7yXc*GFYX%e8';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+if (!GOOGLE_CLIENT_ID) throw new Error("GOOGLE_CLIENT_ID não configurado no .env");
+const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error("JWT_SECRET não configurado no .env");
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
 // Conexão com MongoDB Atlas
-const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://aaaaaaaaaaasafafe_db_user:VriJ4bwVoKj385cZ@cluster0.fylkysy.mongodb.net/traduzirpdf?retryWrites=true&w=majority";
+const MONGO_URI = process.env.MONGO_URI;
+if (!MONGO_URI) throw new Error("MONGO_URI não configurado no .env");
 
 mongoose.connect(MONGO_URI)
   .then(() => console.log("Conectado ao MongoDB Atlas com sucesso!"))
@@ -171,7 +175,7 @@ app.post('/usuarios/google', async (req, res) => {
   try {
     const ticket = await client.verifyIdToken({
       idToken: token,
-      audience: "22878989052-r2d4br0ntugjf63makag0finmfach8g5.apps.googleusercontent.com",
+      audience: GOOGLE_CLIENT_ID,
     });
 
     const payload = ticket.getPayload();
