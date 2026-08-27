@@ -55,6 +55,17 @@ const AdminSchema = new mongoose.Schema({
 
 const Admin = mongoose.model('Admin', AdminSchema);
 
+const PagamentoSchema = new mongoose.Schema({
+  usuarioId: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true },
+  mpId: { type: String, required: true, unique: true },
+  valor: { type: Number, required: true },
+  creditos: { type: Number, required: true },
+  status: { type: String, default: "pending" },
+  creditado: { type: Boolean, default: false }
+}, { timestamps: true });
+
+const Pagamento = mongoose.model('Pagamento', PagamentoSchema);
+
 // Rotas do Mercado Pago (PIX) e Tradução
 const pixRoutes = require("./routes/pix");
 app.use(pixRoutes);
@@ -114,8 +125,8 @@ app.post('/usuarios/cadastro', async (req, res) => {
   if (!isEmailValido(email)) {
     return res.status(400).json({ mensagem: "E-mail inválido" });
   }
-  if (senha.length < 6) {
-    return res.status(400).json({ mensagem: "Senha deve ter no mínimo 6 caracteres" });
+  if (senha.length < 8) {
+    return res.status(400).json({ mensagem: "Senha deve ter no mínimo 8 caracteres" });
   }
 
   try {

@@ -1,81 +1,65 @@
-# Traduzir PDF — Sistema Completo com Autenticação e Pagamento PIX
+# Traduzir PDF — Tradução Inglês → Português com PIX e Créditos
 
-Aplicação web desenvolvida para tradução de arquivos PDF, contendo sistema completo de autenticação de usuários (JWT), painel administrativo/usuário e integração de pagamentos via PIX (Mercado Pago).
+Plataforma para tradução de PDFs com autenticação JWT + Google, limite gratuito e pagamento por créditos via PIX (Mercado Pago).
 
----
+## Funcionalidades
 
-## 🚀 Funcionalidades
+- **Auth:** Cadastro/login com `bcrypt` + JWT, Login com Google (`@react-oauth/google` + `google-auth-library`), validação de e-mail e senha mínimo 8 caracteres
+- **Tradução:** Upload de PDF, extração via `pdftotext`, tradução em chunks `google-translate-api-x` e geração `pdfkit` com progresso **0–100% SSE** (`POST /traduzir-progress`)
+- **Limite gratuito:** Até **10 páginas por arquivo, 3 traduções por dia**. Após isso cada tradução consome **1 crédito**
+- **Créditos/PIX:** `POST /criar-pix` (R$1=1 crédito), QR base64 + copia e cola, `GET /consultar-pagamento/:id` e `POST /webhook/mercadopago` creditam automaticamente, `GET /usuario/creditos` mostra saldo
+- **Painel:** Saldo de créditos e uso diário, botão Traduzir e compra de créditos integrada
+- **Design:** Tema editorial profissional (claro, tipografia Inter, cards com borda, barra fina escura), olho para ver senha e loading spinner
 
-- **Autenticação de Usuários:** Cadastro, login com criptografia de senha (`bcrypt`) e controle de sessões via JWT (JSON Web Token) e Context API.
-- **Tradução de PDF:** Envio de arquivos PDF protegidos por token de autenticação para tradução e download do arquivo traduzido.
-- **Painel do Usuário (`Campousu`):** Exibição de dados da conta e acesso rápido aos serviços.
-- **Pagamento via PIX:** Integração com o Mercado Pago (Checkout Transparente) gerando QR Code em base64, código "Copia e Cola" e verificação automática de status de pagamento por *polling*.
-- **Rotas Protegidas:** Gerenciamento de rotas no frontend (`react-router-dom`) com restrição para usuários autenticados e administradores.
+## Tecnologias
 
----
+**Front:** React 19, React Router 7, Context API, `@react-oauth/google`
+**Back:** Node + Express 5, Mongoose 9 (MongoDB Atlas), `jsonwebtoken`, `bcrypt`, `mercadopago` 3, `google-translate-api-x`, `pdfkit`, `multer`
 
-## 🛠️ Tecnologias Utilizadas
+## Executar local
 
-### **Frontend**
-- React.js
-- React Router DOM
-- Context API (`AuthContext`)
+### Backend
+```bash
+cd backend
+npm install
+```
+Crie `backend/.env`:
+```
+PORT=3000
+MONGO_URI=mongodb+srv://USUARIO:SENHA@cluster0.mongodb.net/traduzirpdf?retryWrites=true&w=majority
+JWT_SECRET=sua_chave_32_chars
+GOOGLE_CLIENT_ID=seu_id.apps.googleusercontent.com
+MP_ACCESS_TOKEN=APP_USR-seu_token
+```
+```bash
+npm start # http://localhost:3000
+```
 
-### **Backend**
-- Node.js & Express
-- MySQL (`mysql2`)
-- JSON Web Token (`jsonwebtoken`)
-- Bcrypt (`bcrypt`)
-- Mercado Pago SDK (`mercadopago`)
-- UUID (`uuid`)
+### Frontend
+```bash
+cd frontend/traduzir_pdf
+npm install
+```
+Crie `frontend/.env`:
+```
+REACT_APP_API_URL=http://localhost:3000
+REACT_APP_GOOGLE_CLIENT_ID=seu_id.apps.googleusercontent.com
+```
+```bash
+npm start # http://localhost:3001
+```
 
----
+## Deploy
 
-## ⚙️ Como Executar o Projeto
+- **Backend Render:** Root `backend`, Build `npm install`, Start `npm start`, envs `MONGO_URI`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `MP_ACCESS_TOKEN`
+- **Frontend Vercel:** Root `frontend/traduzir_pdf`, Build `npm run build`, envs `REACT_APP_API_URL=https://seu-backend.onrender.com` e `REACT_APP_GOOGLE_CLIENT_ID`
+- **Google Cloud:** Origens JS `http://localhost:3000`, `http://127.0.0.1:3000`, `https://seu-front.vercel.app`
+- **Mercado Pago:** Webhook `https://seu-backend.onrender.com/webhook/mercadopago`
 
-### 1. Configurar o Banco de Dados (MySQL)
-Crie um banco de dados e as tabelas necessárias (`usuarios`, `admin`, `pagamentos`).
+## Rotas principais
 
-### 2. Configurar o Backend
-1. Acesse a pasta do backend:
-   ```bash
-   cd backend
-   ```
-2. Instale as dependências:
-   ```bash
-   npm install
-   ```
-3. Crie um arquivo `.env` na raiz do backend com as variáveis de ambiente:
-   ```env
-   PORT=3000
-   DB_HOST=localhost
-   DB_USER=seu_usuario
-   DB_PASSWORD=sua_senha
-   DB_NAME=seu_banco
-   JWT_SECRET=sua_chave_secreta_jwt
-   MP_ACCESS_TOKEN=seu_access_token_do_mercado_pago
-   ```
-4. Inicie o servidor:
-   ```bash
-   node serve.js
-   ```
+`POST /usuarios/cadastro` `POST /usuarios/login` `POST /usuarios/google` `GET /usuario/creditos` `POST /traduzir` `POST /traduzir-progress` `POST /criar-pix` `GET /consultar-pagamento/:id` `POST /webhook/mercadopago`
 
-### 3. Configurar o Frontend
-1. Acesse a pasta do frontend:
-   ```bash
-   cd frontend/traduzir_pdf
-   ```
-2. Instale as dependências:
-   ```bash
-   npm install
-   ```
-3. Inicie a aplicação React:
-   ```bash
-   npm start
-   ```
+## Variáveis expostas
 
----
-
-## 📅 Próximos Passos
-- Implementação de Login / Cadastro com Google (Gmail).
-- Site : https://trqaduzir-livros-j625lm1oz-abelardodivinos-projects.vercel.app/
+Nenhum segredo hardcoded no código — tudo via `process.env`. `.env` está no `.gitignore`, commitar apenas `*.env.example`.
