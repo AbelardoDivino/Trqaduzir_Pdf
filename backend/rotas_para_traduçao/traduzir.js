@@ -30,7 +30,13 @@ async function checkLimite(usuarioId, numPaginas) {
     user.usoDiario = { data: hoje, traducoes: 0, paginas: 0 };
   }
   if (numPaginas > 10) {
-    return { permitido: false, erro: "PDF excede limite de 10 páginas por tradução" };
+    const needed = Math.ceil(numPaginas / 10);
+    if ((user.creditos || 0) < needed) return { permitido: false, erro: `PDF com ${numPaginas} páginas requer ${needed} créditos. Você tem ${user.creditos||0}.`, requerPagamento: true };
+    user.creditos -= needed;
+    user.usoDiario.traducoes += 1;
+    user.usoDiario.paginas += numPaginas;
+    await user.save();
+    return { permitido: true };
   }
   if (user.usoDiario.traducoes >= 3) {
     if ((user.creditos || 0) < 1) return { permitido: false, erro: "Limite diário de 3 traduções atingido. Compre créditos.", requerPagamento: true };

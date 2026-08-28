@@ -111,6 +111,7 @@ router.post("/webhook/mercadopago", async (req, res) => {
 });
 
 router.get("/usuario/creditos", async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   const usuarioId = getUserId(req);
   if (!usuarioId) return res.status(401).json({ erro: "Token não fornecido" });
   const Usuario = mongoose.model("Usuario");
