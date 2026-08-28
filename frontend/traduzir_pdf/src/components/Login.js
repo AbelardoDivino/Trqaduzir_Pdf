@@ -12,6 +12,7 @@ function Login(){
     const [senha,setSenha] = useState("")
     const [mostrar,setMostrar] = useState(false)
     const [carregando,setCarregando]=useState(false)
+    const [googleCarregando,setGoogleCarregando]=useState(false)
     const [erro,setErro] = useState("")
     const {login}  = useContext(AuthContext)
     const navigate = useNavigate()
@@ -25,11 +26,13 @@ function Login(){
         setCarregando(false)
     }
     const handleGoogleSuccess = async (credentialResponse) => {
+        setGoogleCarregando(true); setErro("")
         try {
             const res = await fetch(`${API_URL}/usuarios/google`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: credentialResponse.credential }) });
             const data = await res.json();
             if (res.ok) { login(data.token, data.usuario); navigate("/"); } else { setErro(data.erro || "Erro no login com Google"); }
         } catch { setErro("Erro de conexão com o servidor"); }
+        setGoogleCarregando(false)
     };
     return (
     <div className="card">
@@ -39,8 +42,11 @@ function Login(){
         <form onSubmit={handleSubmit}>
             <div className="field"><label>Email</label><input className="input" type="email" placeholder="seu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
             <div className="field"><label>Senha</label><div style={{position:"relative"}}><input className="input" type={mostrar?"text":"password"} placeholder="mínimo 8 caracteres" value={senha} onChange={(e) => setSenha(e.target.value)} required style={{paddingRight:"40px"}} /><button type="button" onClick={()=>setMostrar(v=>!v)} style={{position:"absolute",right:"8px",top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#64748b"}}><Eye off={mostrar} /></button></div></div>
-            <button className="btn btn-primary" type="submit" disabled={carregando} style={{width:"100%",marginTop:"8px",gap:"8px"}}>{carregando && <span className="spinner" />} {carregando?"Entrando...":"Entrar"}</button>
-            <div style={{margin:"16px 0",borderTop:"1px solid #e2e8f0",paddingTop:"16px"}}><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setErro("Falha ao fazer login com o Google")} /></div>
+            <button className="btn btn-primary" type="submit" disabled={carregando || googleCarregando} style={{width:"100%",marginTop:"8px",gap:"8px"}}>{carregando && <span className="spinner" />} {carregando?"Entrando...":"Entrar"}</button>
+            <div style={{margin:"16px 0",borderTop:"1px solid #e2e8f0",paddingTop:"16px",position:"relative"}}>
+                {googleCarregando && <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:"8px",padding:"10px",background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:"6px",marginBottom:"10px",fontSize:"13px",color:"#0f172a"}}><span className="spinner" style={{borderColor:"rgba(15,23,42,.2)",borderTopColor:"#0f172a"}} /> Autenticando com Google...</div>}
+                <div style={{opacity: googleCarregando ? .5 : 1, pointerEvents: googleCarregando ? "none" : "auto"}}><GoogleLogin onSuccess={handleGoogleSuccess} onError={() => { setGoogleCarregando(false); setErro("Falha ao fazer login com o Google") }} /></div>
+            </div>
         </form>
     </div>
     )
